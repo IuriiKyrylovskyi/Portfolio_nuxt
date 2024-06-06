@@ -19,7 +19,7 @@ const props = defineProps<{
 const { modalItem } = toRefs(props);
 
 const open = ref(false);
-const errorClass = ref(modalItem?.value?.error ? 'error' : '');
+const errorClass = ref(modalItem?.value?.isError ? 'error' : '');
 
 watchEffect(() => {
   if (modalItem?.value?.message) {
@@ -42,13 +42,13 @@ const handleClose = () => {
           class="relative min-w-[300px] flex flex-col gap-[40px] items-center bg-white p-[44px] text-black text-center text-2xl rounded"
         >
           <img
-            v-if="modalItem?.error"
+            v-if="modalItem?.isError"
             src="@/assets/images/email-failed.png"
             alt="error icon"
             class="max-w-[170px]"
           />
           <img
-            v-if="!modalItem?.error"
+            v-if="!modalItem?.isError"
             src="@/assets/images/email-success.png"
             alt="success icon"
             class="max-w-[170px]"

@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { Routes } from '@/interfaces/global'
+import { Routes } from '@/interfaces/global';
 </script>
 
 <template>

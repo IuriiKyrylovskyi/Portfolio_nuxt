@@ -4,9 +4,7 @@ import { skills } from '@/utils/constants/skills';
 
 <template>
   <div class="w-full flex items-center justify-center">
-    <ul
-      class="flex gap-2 flex-wrap items-center justify-center shadow-2xl py-[50px]"
-    >
+    <ul class="flex gap-2 flex-wrap items-center justify-center py-[50px]">
       <li
         v-for="s in skills"
         class="skill-item flip-card relative cursor-pointer"
