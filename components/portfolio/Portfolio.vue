@@ -27,4 +27,11 @@ import Slider from '~/components/portfolio/Slider.vue';
   flex: 0 0 calc(50% - 20px);
   width: calc(50% - 20px);
 }
+
+@media (max-width: 500px) {
+  .project-card {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+}
 </style>
