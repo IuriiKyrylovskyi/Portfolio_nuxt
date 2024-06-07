@@ -18,6 +18,9 @@ import Slider from '~/components/portfolio/Slider.vue';
           </div>
         </NuxtLink>
       </li>
+      <li class="project-card flex items-center justify-center">
+        ...adding more is in a process
+      </li>
     </ul>
   </div>
 </template>
