@@ -10,7 +10,7 @@ const { name } = toRefs(props);
 
 <template>
   <li
-    class="flex justify-center items-center gap-[10px] my-[10px] bg-white py-[2px] px-[5px] mx-[5px] rounded"
+    class="flex justify-center items-center gap-[10px] my-[10px] bg-white py-[2px] px-[10px] mx-[5px] rounded"
   >
     <div class="w-[32px]">
       <img :src="icon" :alt="name" />
