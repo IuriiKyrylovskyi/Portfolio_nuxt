@@ -3,14 +3,28 @@ const links = [
   {
     name: 'come back alive',
     link: 'https://savelife.in.ua/en/donate-en/#donate-a',
+    img: './help/logos/come-back-alive.svg',
   },
   {
     name: 'Charity Фонд Андрія Хливнюка',
     link: 'https://send.monobank.ua/jar/gERGfd4xF',
+    img: './help/logos/boombox.png',
   },
-  { name: 'prytula foundation', link: 'https://prytulafoundation.org/en' },
-  { name: 'united24', link: 'https://u24.gov.ua/' },
-  { name: 'war.ukraine.ua', link: 'https://war.ukraine.ua/donate/' },
+  {
+    name: 'prytula foundation',
+    link: 'https://prytulafoundation.org/en',
+    img: './help/logos/prytula.svg',
+  },
+  {
+    name: '',
+    link: 'https://u24.gov.ua/',
+    img: './help/logos/united24.svg',
+  },
+  {
+    name: 'war.ukraine.ua',
+    link: 'https://war.ukraine.ua/donate/',
+    img: './help/logos/war-in-ukraine.png',
+  },
 ];
 </script>
 
@@ -25,8 +39,9 @@ const links = [
         :href="l.link"
         target="_blank"
         rel="noopener noreferrer"
-        class="inline-block hover:text-cyan-300 relative underline hover:no-underline"
+        class="inline-flex gap-[12px] hover:text-cyan-300 relative underline hover:no-underline"
       >
+        <img v-if="l.img" :src="l.img" :alt="l.name" class="h-[30px]" />
         {{ l.name }}
         <span
           class="invisible absolute top-[-10px] right-3 px-[5px] py-[2px] text-lg text-white normal-case bg-gray-800"
