@@ -1,7 +1,7 @@
 <script setup lang="ts">
 useSeoMeta({
   title: 'Kyrylovskiy Yurii / Software engineer & Web developer',
-  ogTitle: 'Kyrylovskiy Yurii / Software engineer & Web develope',
+  ogTitle: 'Kyrylovskiy Yurii / Software engineer & Web developer',
   description:
     'Develop, design, create, modify, and/or test mobile and desktop web software applications or systems. Architect efficient and reusable front-end systems that drive complex web applications. Implement features and user interfaces to optimize performance of user-facing products.',
   ogDescription:
