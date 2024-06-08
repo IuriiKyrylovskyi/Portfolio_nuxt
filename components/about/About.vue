@@ -6,7 +6,7 @@
     </div>
     <!-- </div> -->
     <div
-      class="lg:h-full lg:w-2/3 text-2xl text-white md:text-xl font-bold flex flex-col gap-6 p"
+      class="lg:h-full lg:w-2/3 text-xl text-white font-bold flex flex-col gap-6"
     >
       <p>👋 Hey!</p>
       <p>
