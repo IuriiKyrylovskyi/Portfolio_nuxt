@@ -8,6 +8,7 @@ import MadeWith from '@/components/footer/MadeWith.vue';
   <footer class="flex flex-col items-center gap-8 p-6 mt-10">
     <Socials />
     <MadeWith />
+    <FooterBuyMeCoffee />
     <LogoVideo />
   </footer>
 </template>

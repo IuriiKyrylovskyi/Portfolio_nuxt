@@ -10,6 +10,25 @@ useSeoMeta({
     'https://media-exp1.licdn.com/dms/image/C4E03AQG9fAFYpTq0qQ/profile-displayphoto-shrink_800_800/0/1602077995088?e=1652918400&v=beta&t=z_66tAoKpidSU4r8B5uLVNk1vmQoznIMtUbbNjMdcgg',
   twitterCard: 'summary_large_image',
 });
+
+useHead({
+  script: [
+    {
+      type: 'text/javascript',
+      src: 'https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js',
+      'data-name': 'bmc-button',
+      'data-slug': 'iurii712d',
+      'data-color': '#2b5d6d',
+      'data-emoji': '',
+      'data-font': 'Comic',
+      'data-text': 'Buy me a coffee',
+      'data-outline-color': '#ffffff',
+      'data-font-color': '#ffffff',
+      'data-coffee-color': '#FFDD00',
+      async: true,
+    },
+  ],
+});
 </script>
 
 <template>
