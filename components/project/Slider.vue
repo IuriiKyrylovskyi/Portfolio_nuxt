@@ -34,7 +34,7 @@ const { item } = toRefs(props);
       style="aspect-ratio: 670 / 445"
     >
       <a :href="s.url" target="_blank" rel="noopener noreferrer">
-        <img :src="s.img" alt="war in Ukraine" />
+        <img :src="s.img" :alt="item.title" />
       </a>
     </SwiperSlide>
 

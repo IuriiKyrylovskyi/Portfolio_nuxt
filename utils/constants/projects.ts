@@ -35,7 +35,7 @@ export const projects: IProject[] = [
         url: 'https://zable.com.au/profile/animesh-mishra',
       },
     ],
-    about: 'The roject description will be added soon 👨‍💻',
+    about: 'The project description will be added soon 👨‍💻',
     stack: [
       'Next.js',
       'TypeScript',
@@ -93,7 +93,7 @@ export const projects: IProject[] = [
         url: 'https://surfgulp.netlify.app/',
       },
     ],
-    about: 'The roject description will be added soon 👨‍💻',
+    about: 'The project description will be added soon 👨‍💻',
     stack: [
       'HTML',
       'SCSS',
@@ -126,7 +126,7 @@ export const projects: IProject[] = [
         url: 'https://gofit-shopgulp.netlify.app/cart.html',
       },
     ],
-    about: 'The roject description will be added soon 👨‍💻',
+    about: 'The project description will be added soon 👨‍💻',
     stack: [
       'HTML',
       'SCSS',
