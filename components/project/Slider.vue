@@ -1,16 +1,15 @@
 <script setup lang="ts">
-const slides = ref([
-  './help/01.png',
-  './help/02.png',
-  './help/03.png',
-  './help/04.png',
-  './help/05.png',
-]);
+import type { IProject } from '~/interfaces/project';
+import SliderControls from '@/components/portfolio/SliderControls.vue';
+
+const props = defineProps<{ item: IProject }>();
+
+const { item } = toRefs(props);
 </script>
 
 <template>
   <Swiper
-    id="help-slider"
+    id="project"
     :modules="[SwiperAutoplay, SwiperEffectCreative]"
     :slides-per-view="1"
     :loop="true"
@@ -30,28 +29,34 @@ const slides = ref([
     }"
   >
     <SwiperSlide
-      v-for="(s, i) in slides"
+      v-for="(s, i) in item.pages"
       :key="i"
       style="aspect-ratio: 670 / 445"
     >
-      <img :src="s" alt="war in Ukraine" />
+      <a :href="s.url" target="_blank" rel="noopener noreferrer">
+        <img :src="s.img" alt="war in Ukraine" />
+      </a>
     </SwiperSlide>
+
+    <SliderControls />
   </Swiper>
 </template>
 
 <style>
-#help-slider .swiper {
+#project .swiper {
   border-radius: 6px;
   overflow: hidden;
+
+  margin: 0 auto;
 }
-#help-slider .swiper-slide {
+#project .swiper-slide {
   display: flex;
   justify-content: center;
   align-items: center;
 
   position: relative;
 }
-#help-slider .swiper-slide img {
+#project .swiper-slide img {
   position: absolute;
   top: 0;
   left: 0;
@@ -60,13 +65,13 @@ const slides = ref([
   max-width: 100%;
   object-fit: cover;
 }
-#help-slider .swiper-wrapper {
-  min-width: 670px;
-  width: 670px;
+#project .swiper-wrapper {
+  min-width: 1000px;
+  width: 1000px;
 }
 
 @media (max-width: 700px) {
-  #help-slider .swiper-wrapper {
+  #project .swiper-wrapper {
     min-width: calc(100vw - 32px);
     width: calc(100vw - 32px);
   }

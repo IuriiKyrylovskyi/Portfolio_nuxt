@@ -8,4 +8,6 @@ export interface IProject {
   description: string;
   slug: string;
   pages: IProjectPage[];
+  about: string;
+  stack: string[];
 }
