@@ -17,7 +17,6 @@
     "@oku-ui/motion-nuxt": "^0.2.1",
     "nodemailer": "^6.9.13",
     "nuxt": "^3.11.2",
-    "nuxt-mail": "^5.0.1",
     "nuxt-swiper": "^1.2.2",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"

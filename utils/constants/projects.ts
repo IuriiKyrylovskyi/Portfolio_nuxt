@@ -138,4 +138,102 @@ export const projects: IProject[] = [
       'Cross-Browser Compatibility',
     ],
   },
+  {
+    title: 'Portfolio',
+    description: 'Fullstack Development',
+    slug: '/project/portfolio',
+    pages: [
+      {
+        img: '/projects/04/01.png',
+        url: 'https://kyrylovskyi-yurii.netlify.app/about',
+      },
+      {
+        img: '/projects/04/02.png',
+        url: 'https://kyrylovskyi-yurii.netlify.app/portfolio',
+      },
+      {
+        img: '/projects/04/03.png',
+        url: 'https://kyrylovskyi-yurii.netlify.app/skills',
+      },
+      {
+        img: '/projects/04/04.png',
+        url: 'https://kyrylovskyi-yurii.netlify.app/contact-me',
+      },
+      {
+        img: '/projects/04/05.png',
+        url: 'https://kyrylovskyi-yurii.netlify.app/project/zable',
+      },
+      {
+        img: '/projects/04/06.png',
+        url: 'https://kyrylovskyi-yurii.netlify.app/help',
+      },
+      {
+        img: '/projects/04/07.png',
+        url: 'https://kyrylovskyi-yurii.netlify.app',
+      },
+    ],
+    about: 'The project description will be added soon 👨‍💻',
+    stack: [
+      'Nuxt 3',
+      'Node',
+      'TypeScript',
+      'TailwindCss',
+      'Vite',
+      'Nodemailer',
+      'Motion',
+      'Swiper',
+      'SEO',
+      'Buy me a coffee',
+      'Responsive Design',
+      'Cross-Browser Compatibility',
+    ],
+  },
+  {
+    title: 'HealthCare',
+    description: 'Fullstack Development',
+    slug: '/project/nexamind',
+    pages: [
+      {
+        img: '/projects/05/01.png',
+        url: 'https://nexamind.dev',
+      },
+      {
+        img: '/projects/05/02.png',
+        url: 'https://nexamind.dev/psychotherapists',
+      },
+      {
+        img: '/projects/05/03.png',
+        url: 'https://nexamind.dev/profile/oksana-pedchenko',
+      },
+      {
+        img: '/projects/05/04.png',
+        url: 'https://nexamind.dev/profile/oksana-pedchenko',
+      },
+      {
+        img: '/projects/05/05.png',
+        url: 'https://nexamind.dev/profile/oksana-pedchenko',
+      },
+    ],
+    about: 'The project description will be added soon 👨‍💻',
+    stack: [
+      'Next.js',
+      'TypeScript',
+      'Node',
+      'Styled components',
+      'Vite',
+      'Nodemailer',
+      'Motion',
+      'Swiper',
+      'Stripe',
+      'GPay',
+      'ApplePay',
+      'i18',
+      'SEO',
+      'Rest API',
+      'axios',
+      'Auth',
+      'Responsive Design',
+      'Cross-Browser Compatibility',
+    ],
+  },
 ];

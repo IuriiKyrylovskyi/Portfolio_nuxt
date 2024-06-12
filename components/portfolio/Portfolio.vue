@@ -18,8 +18,17 @@ import Slider from '~/components/portfolio/Slider.vue';
           </div>
         </NuxtLink>
       </li>
-      <li class="project-card flex items-center justify-center">
-        ...adding more is in a process
+      <li
+        class="project-card flex flex-col gap-[10px] items-center justify-center"
+      >
+        <p>...adding more is in a process</p>
+        <a
+          class="hover:underline"
+          href="https://yurii-kyrylovskyi.netlify.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Visit previous portfolio version?</a
+        >
       </li>
     </ul>
   </div>

@@ -20,7 +20,7 @@ const project = ref(defineProject());
       <Slider :item="project" />
 
       <div
-        class="flex gap-[12px] flex-wrap bg-white/10 px-[10px] py-[5px] rounded text-lg my-[10px] leading-[1.1]"
+        class="flex gap-[16px] flex-wrap bg-white/10 px-[10px] py-[5px] rounded text-lg my-[10px] leading-[1.1]"
       >
         <p v-for="tech in project.stack" :key="project.slug + tech">
           {{ tech }}
