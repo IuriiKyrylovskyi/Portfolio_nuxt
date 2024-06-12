@@ -10,4 +10,5 @@ export interface IProject {
   pages: IProjectPage[];
   about: string;
   stack: string[];
+  git?: string;
 }

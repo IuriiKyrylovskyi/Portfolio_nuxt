@@ -26,6 +26,18 @@ const project = ref(defineProject());
           {{ tech }}
         </p>
       </div>
+
+      <a
+        v-if="project.git"
+        :href="project.git"
+        class="flex gap-[6px] my-[10px]"
+        target="_blank"
+        rel="noopener"
+        >github repo:
+        <span class="text-blue-400 hover:text-white transition">
+          {{ project.git }}
+        </span>
+      </a>
     </div>
 
     <div class="text-2xl text-white font-bold w-full">
