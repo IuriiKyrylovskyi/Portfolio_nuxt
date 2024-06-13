@@ -28,4 +28,5 @@ export default defineNuxtConfig({
       'Source+Sans+Pro': [300, 400],
     },
   },
+  swiper: {},
 });

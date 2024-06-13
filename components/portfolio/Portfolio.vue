@@ -8,7 +8,7 @@ import Slider from '~/components/portfolio/Slider.vue';
   <div class="w-full">
     <ul class="w-full flex gap-[40px] flex-wrap">
       <li :key="p.title" v-for="p in projects" class="project-card">
-        <Slider :pages="p.pages" :id="p.title" />
+        <Slider :pages="p.pages" :id="p.title" :slug="p.slug" />
         <NuxtLink :href="p.slug">
           <div
             class="mt-[10px] text-lg cursor-pointer hover:bg-white/10 transition ease-linear px-[10px] py-[5px] rounded"

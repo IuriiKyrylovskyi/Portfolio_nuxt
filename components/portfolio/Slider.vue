@@ -4,10 +4,12 @@ import SliderControls from '@/components/portfolio/SliderControls.vue';
 
 const props = defineProps<{
   id: string;
+  slug: string;
   pages: IProjectPage[];
 }>();
 
 const { id } = toRefs(props);
+const { slug } = toRefs(props);
 const { pages } = toRefs(props);
 </script>
 
@@ -33,9 +35,9 @@ const { pages } = toRefs(props);
       :key="p.url"
       style="aspect-ratio: 450 / 310"
     >
-      <a :href="p.url" target="_blank" rel="noopener noreferrer">
+      <NuxtLink :href="slug">
         <img :src="p.img" alt="project image" />
-      </a>
+      </NuxtLink>
     </SwiperSlide>
 
     <SliderControls />
