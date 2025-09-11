@@ -200,23 +200,23 @@ export const projects: IProject[] = [
     pages: [
       {
         img: '/projects/05/01.png',
-        url: 'https://nexamind.dev',
+        url: 'https://mental-health-app-six.vercel.app/ua',
       },
       {
         img: '/projects/05/02.png',
-        url: 'https://nexamind.dev/psychotherapists',
+        url: 'https://mental-health-app-six.vercel.app/ua/psychotherapists',
       },
       {
         img: '/projects/05/03.png',
-        url: 'https://nexamind.dev/profile/oksana-pedchenko',
+        url: 'https://mental-health-app-six.vercel.app/ua/profile/oksana-pedchenko',
       },
       {
         img: '/projects/05/04.png',
-        url: 'https://nexamind.dev/profile/oksana-pedchenko',
+        url: 'https://mental-health-app-six.vercel.app/ua/profile/oksana-pedchenko',
       },
       {
         img: '/projects/05/05.png',
-        url: 'https://nexamind.dev/profile/oksana-pedchenko',
+        url: 'https://mental-health-app-six.vercel.app/ua/profile/oksana-pedchenko',
       },
     ],
     about: 'The project description will be added soon 👨‍💻',
