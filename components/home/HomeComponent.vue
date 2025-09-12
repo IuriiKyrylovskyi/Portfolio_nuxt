@@ -4,7 +4,7 @@ import { Routes } from '~/interfaces/global';
 
 <template>
   <div class="h-1/2 lg:h-full lg:w-1/2 relative">
-    <img src="@/assets/images/hero.png" alt="" fill class="object-contain" />
+    <img src="@/assets/images/me/3.png" alt="" fill class="object-contain" />
   </div>
   <div
     class="h-1/2 lg:h-full lg:w-1/2 flex flex-col gap-8 items-center justify-center my-8"
