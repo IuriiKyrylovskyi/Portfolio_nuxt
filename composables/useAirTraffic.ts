@@ -77,6 +77,12 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
   let animationFrameId: number;
   const loadedPlaneImages: HTMLImageElement[] = [];
 
+  const JANJO_WAYPOINT = {
+    name: 'JANJO',
+    x: 0, // Will be set in setup() to be on the right border
+    y: 0, // Will be set in setup() to be roughly center-right
+  };
+
   const getDistance = (p1: Point, p2: Point) =>
     Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
   const addPlane = () => {
@@ -104,6 +110,63 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
         }
       }
     }
+  };
+
+  const drawWaypoint = (waypoint: typeof JANJO_WAYPOINT) => {
+    if (!ctx) return;
+
+    ctx.save();
+    ctx.translate(waypoint.x, waypoint.y);
+
+    // Draw the name
+    ctx.font = 'bold 16px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'right'; // Align text to the right of the icon
+    ctx.textBaseline = 'middle';
+    ctx.fillText(waypoint.name, 24, -26); // Offset to the left of the icon
+
+    // Draw label 'track to Europe'
+    ctx.font = '14px italian Arial'; // You can choose a different font style
+    ctx.fillStyle = '#9e9e9e'; // Choose a color
+    ctx.textAlign = 'right'; // Align the new text to the left
+    ctx.textBaseline = 'middle';
+    ctx.fillText('traffic queue to Europe ➜', -20, 2);
+
+    // Draw the circular icon (like the image provided)
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2); // Outer circle
+    ctx.arc(0, 0, 4, 0, Math.PI * 2); // Inner circle
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Draw the crosshairs inside the circle
+    ctx.beginPath();
+    ctx.moveTo(-7, 0);
+    ctx.lineTo(7, 0); // Horizontal line
+    ctx.moveTo(0, -7);
+    ctx.lineTo(0, 7); // Vertical line
+    ctx.stroke();
+
+    // Draw the white line to the right side ---
+    // Define the angle and length
+    const angleInDegrees = -12;
+    const angleInRadians = angleInDegrees * (Math.PI / 180);
+    const startX = 8; // Starting point just outside the circle
+    const lineLength = 20; // Length of the line
+
+    // Calculate the end coordinates using trigonometry
+    const endX = startX + lineLength * Math.cos(angleInRadians);
+    const endY = 0 + lineLength * Math.sin(angleInRadians);
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.moveTo(startX, -1);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+
+    ctx.restore();
   };
 
   let lastTime = 0;
@@ -140,6 +203,7 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
       plane.update(deltaTime);
       plane.draw(ctx!);
     });
+    drawWaypoint(JANJO_WAYPOINT);
     animationFrameId = requestAnimationFrame(animate);
   };
 
@@ -205,6 +269,9 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
     canvasRef.value.height = window.innerHeight;
     planes.value = [];
     addPlane();
+
+    JANJO_WAYPOINT.x = canvasRef.value.width - 30; // 60 pixels from the right border
+    JANJO_WAYPOINT.y = 150; // Vertically centered
   };
   onMounted(() => {
     const imagePromises = planeIconUrls.map(
