@@ -11,8 +11,18 @@ export const PLANE_CONFIG = {
   SIZE: 40,
   SPEED: 0.4,
   CONFLICT_DISTANCE: 120,
-  SCALE_DURATION_MS: 1500,
+  SCALE_DURATION_MS: 1000,
+  TURN_SPEED: 0.1, // Slightly increased turn speed for responsiveness
+  PATH_ACCURACY: 20, // How close to a waypoint to advance to the next
 };
+
+// This helper function remains crucial for smooth turning
+function lerpAngle(a: number, b: number, t: number): number {
+  let diff = b - a;
+  if (diff > Math.PI) diff -= 2 * Math.PI;
+  if (diff < -Math.PI) diff += 2 * Math.PI;
+  return a + diff * t;
+}
 
 export class Plane {
   id: number;
@@ -23,10 +33,11 @@ export class Plane {
   angle: number;
   scale: number;
   scaleDirection: 1 | -1 | 0;
-  isPathPlanning: boolean; // <-- REPLACED isDragging
   isOffscreen: boolean;
   warning: Warning | null;
   image: HTMLImageElement;
+  path: Point[] | null = null;
+  pathIndex: number = 0;
 
   constructor(
     private canvasWidth: number,
@@ -43,13 +54,11 @@ export class Plane {
     this.reset();
     this.scale = 0;
     this.scaleDirection = 1;
-    this.isPathPlanning = false; // <-- NEW PROPERTY
     this.isOffscreen = false;
     this.warning = null;
   }
 
   reset(): void {
-    /* ... (no changes in this method) */
     const edge = Math.floor(Math.random() * 4);
     switch (edge) {
       case 0:
@@ -78,7 +87,9 @@ export class Plane {
     this.vy = Math.sin(this.angle) * PLANE_CONFIG.SPEED;
   }
 
+  // --- UPDATE METHOD FOR DENSE, NORMALIZED PATHS ---
   update(deltaTime: number): void {
+    // Handle scaling animation
     if (this.scaleDirection !== 0) {
       const scaleChange =
         (deltaTime / PLANE_CONFIG.SCALE_DURATION_MS) * this.scaleDirection;
@@ -86,13 +97,48 @@ export class Plane {
       if (this.scale >= 1 || this.scale <= 0) this.scaleDirection = 0;
     }
 
-    // Only move the plane if a path is NOT being planned for it
-    if (!this.isPathPlanning) {
-      // <-- UPDATED CONDITION
-      this.x += this.vx;
-      this.y += this.vy;
+    // --- Simplified and more robust path following logic ---
+    if (
+      this.path &&
+      this.path.length > 0 &&
+      this.pathIndex < this.path.length
+    ) {
+      const targetPoint = this.path[this.pathIndex];
+      const distance = Math.sqrt(
+        (targetPoint.x - this.x) ** 2 + (targetPoint.y - this.y) ** 2
+      );
+
+      // If close enough to the waypoint, simply advance to the next one.
+      // The dense path makes this simple check very reliable.
+      if (distance < PLANE_CONFIG.PATH_ACCURACY) {
+        this.pathIndex++;
+      }
+
+      // Steer towards the current target, if it still exists
+      const currentTarget = this.path[this.pathIndex];
+      if (currentTarget) {
+        const targetAngle = Math.atan2(
+          currentTarget.y - this.y,
+          currentTarget.x - this.x
+        );
+        this.angle = lerpAngle(
+          this.angle,
+          targetAngle,
+          PLANE_CONFIG.TURN_SPEED
+        );
+      } else {
+        // Path is complete
+        this.path = null;
+      }
     }
 
+    // Update velocity and position based on the angle
+    this.vx = Math.cos(this.angle) * PLANE_CONFIG.SPEED;
+    this.vy = Math.sin(this.angle) * PLANE_CONFIG.SPEED;
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Check if offscreen
     const offscreenMargin = PLANE_CONFIG.SIZE * 2;
     if (
       this.x < -offscreenMargin ||
@@ -105,22 +151,11 @@ export class Plane {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
-    /* ... (no changes in this method) */
-    if (
-      this.x < -PLANE_CONFIG.SIZE ||
-      this.x > this.canvasWidth + PLANE_CONFIG.SIZE ||
-      this.y < -PLANE_CONFIG.SIZE ||
-      this.y > this.canvasHeight + PLANE_CONFIG.SIZE ||
-      this.scale <= 0
-    )
-      return;
-
+    if (this.scale <= 0) return;
     ctx.save();
     ctx.translate(this.x, this.y);
-
     if (this.warning) {
-      const blinkSpeed = 0.005;
-      const opacity = 0.4 + Math.sin(Date.now() * blinkSpeed) * 0.3;
+      const opacity = 0.4 + Math.sin(Date.now() * 0.005) * 0.3;
       ctx.beginPath();
       ctx.arc(0, 0, PLANE_CONFIG.CONFLICT_DISTANCE / 2, 0, Math.PI * 2);
       ctx.fillStyle = `${this.warning.color}${Math.floor(opacity * 255)
@@ -128,7 +163,6 @@ export class Plane {
         .padStart(2, '0')}`;
       ctx.fill();
     }
-
     ctx.rotate(this.angle);
     ctx.scale(this.scale, this.scale);
     ctx.drawImage(
@@ -141,12 +175,10 @@ export class Plane {
     ctx.restore();
   }
 
-  // V-- RENAMED AND SIMPLIFIED THIS METHOD --V
   isPointOnIcon(point: Point): boolean {
     const distance = Math.sqrt(
       (point.x - this.x) ** 2 + (point.y - this.y) ** 2
     );
-    // Check if the click is within half the plane's size (i.e., on the icon)
-    return distance < PLANE_CONFIG.SIZE / 1.5; // A little more generous than / 2
+    return distance < PLANE_CONFIG.SIZE / 1.5;
   }
 }

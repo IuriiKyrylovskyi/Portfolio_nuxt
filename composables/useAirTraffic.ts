@@ -3,6 +3,8 @@ import { Plane, PLANE_CONFIG, type Point } from '~/interfaces/traffic';
 
 const MAX_PLANES = 7;
 const MIN_PLANES = 1;
+const PATH_RAW_SIMPLIFY_THRESHOLD = 20; // How far to drag before a raw point is added
+const PATH_NORMALIZED_STEP = 10; //2; // The final distance between dots in the path
 
 // List of available plane icons from the /public directory
 const planeIconUrls = [
@@ -15,11 +17,61 @@ const planeIconUrls = [
   '/planes/7.png',
 ];
 
+/**
+ * Processes a raw path of points and converts it into a new path where
+ * all points are a fixed distance apart. This is the key to smooth movement
+ * and uniform dot rendering.
+ * @param path The raw path from user input.
+ * @param step The desired distance between points.
+ * @returns A new, evenly-spaced path.
+ */
+function normalizePathByDistance(path: Point[], step: number): Point[] {
+  if (path.length < 2) return path;
+  const newPath: Point[] = [path[0]];
+  let remainingDist = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const start = path[i];
+    const end = path[i + 1];
+    const segmentDx = end.x - start.x;
+    const segmentDy = end.y - start.y;
+    const segmentLen = Math.sqrt(segmentDx ** 2 + segmentDy ** 2);
+    if (segmentLen === 0) continue;
+    const segmentDirX = segmentDx / segmentLen;
+    const segmentDirY = segmentDy / segmentLen;
+    let currentDist = step - remainingDist;
+    while (currentDist < segmentLen) {
+      newPath.push({
+        x: start.x + segmentDirX * currentDist,
+        y: start.y + segmentDirY * currentDist,
+      });
+      currentDist += step;
+    }
+    remainingDist = segmentLen - (currentDist - step);
+  }
+  return newPath;
+}
+
+function findClosestPointIndex(position: Point, path: Point[]): number {
+  if (!path || path.length === 0) return 0;
+  let closestIndex = 0;
+  let minDistance = Infinity;
+
+  for (let i = 0; i < path.length; i++) {
+    const dx = position.x - path[i].x;
+    const dy = position.y - path[i].y;
+    const distance = dx * dx + dy * dy; // Use squared distance for efficiency
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestIndex = i;
+    }
+  }
+  return closestIndex;
+}
+
 export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
   const planes = ref<Plane[]>([]);
   const draggedPlane = ref<Plane | null>(null);
-  // NEW: State to hold the start and end points of the line being drawn
-  const dragPath = ref<{ start: Point; end: Point } | null>(null);
+  const rawDragPath = ref<Point[] | null>(null); // We now store the raw path separately
 
   let ctx: CanvasRenderingContext2D | null = null;
   let animationFrameId: number;
@@ -47,7 +99,7 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
         const p1 = planes.value[i];
         const p2 = planes.value[j];
         if (getDistance(p1, p2) < PLANE_CONFIG.CONFLICT_DISTANCE) {
-          if (!p1.warning) p1.warning = { color: `#ff8f00` }; // Changed to a consistent amber color
+          if (!p1.warning) p1.warning = { color: `#ff8f00` };
           p2.warning = p1.warning;
         }
       }
@@ -62,17 +114,20 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
 
     ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
 
-    // --- NEW: Draw the path line if it exists ---
-    if (dragPath.value) {
-      ctx.beginPath();
-      ctx.moveTo(dragPath.value.start.x, dragPath.value.start.y);
-      ctx.lineTo(dragPath.value.end.x, dragPath.value.end.y);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 10]);
-      ctx.stroke();
-      ctx.setLineDash([]); // Reset line dash for other drawings
-    }
+    // --- UPDATED DRAWING LOGIC: DOTS ONLY ---
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+
+    // Draw all assigned flight paths as faint dots
+    planes.value.forEach((plane) => {
+      if (plane.path) {
+        for (let i = plane.pathIndex; i < plane.path.length; i++) {
+          const point = plane.path[i];
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    });
 
     if (
       planes.value.length < MIN_PLANES ||
@@ -88,7 +143,6 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
     animationFrameId = requestAnimationFrame(animate);
   };
 
-  // --- REBUILT EVENT HANDLERS ---
   const getEventPoint = (e: MouseEvent | TouchEvent): Point => {
     const rect = canvasRef.value!.getBoundingClientRect();
     const pos = 'touches' in e ? e.touches[0] : e;
@@ -101,45 +155,49 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
     for (let i = planes.value.length - 1; i >= 0; i--) {
       const plane = planes.value[i];
       if (plane.isPointOnIcon(point)) {
-        plane.isPathPlanning = true; // Pause the plane's movement
         draggedPlane.value = plane;
-        // Start drawing the path from the plane's center
-        dragPath.value = { start: { x: plane.x, y: plane.y }, end: point };
+        // Start collecting the raw path from the plane's position
+        rawDragPath.value = [{ x: plane.x, y: plane.y }];
+        // Clear any previous path immediately
+        plane.path = null;
         break;
       }
     }
   };
 
   const handleMove = (e: MouseEvent | TouchEvent) => {
-    if (!draggedPlane.value || !dragPath.value) return;
+    if (!draggedPlane.value || !rawDragPath.value) return;
     e.preventDefault();
     const point = getEventPoint(e);
-    // Update the end of the path to the current cursor position
-    dragPath.value.end = point;
+    const lastPoint = rawDragPath.value[rawDragPath.value.length - 1];
+
+    if (getDistance(point, lastPoint) > PATH_RAW_SIMPLIFY_THRESHOLD) {
+      rawDragPath.value.push(point);
+
+      const normalizedPath = normalizePathByDistance(
+        rawDragPath.value,
+        PATH_NORMALIZED_STEP
+      );
+
+      // --- THIS IS THE NEW LOGIC ---
+      // 1. Find the index on the new path closest to the plane's CURRENT position.
+      const closestIndex = findClosestPointIndex(
+        { x: draggedPlane.value.x, y: draggedPlane.value.y },
+        normalizedPath
+      );
+
+      // 2. Assign the full new path to the plane.
+      draggedPlane.value.path = normalizedPath;
+      // 3. Tell the plane to start following from that closest point, not from the beginning.
+      draggedPlane.value.pathIndex = closestIndex;
+    }
   };
 
   const handleEnd = () => {
-    if (!draggedPlane.value || !dragPath.value) return;
-
-    // Only set new path if the drawn line is longer than a few pixels
-    if (getDistance(dragPath.value.start, dragPath.value.end) > 10) {
-      const newAngle = Math.atan2(
-        dragPath.value.end.y - dragPath.value.start.y,
-        dragPath.value.end.x - dragPath.value.start.x
-      );
-      draggedPlane.value.angle = newAngle;
-      draggedPlane.value.vx = Math.cos(newAngle) * PLANE_CONFIG.SPEED;
-      draggedPlane.value.vy = Math.sin(newAngle) * PLANE_CONFIG.SPEED;
-    }
-
-    draggedPlane.value.isPathPlanning = false; // Unpause the plane
-
-    // Clean up state
     draggedPlane.value = null;
-    dragPath.value = null;
+    rawDragPath.value = null;
   };
 
-  // --- LIFECYCLE HOOKS (no change to logic, just for context) ---
   const setup = () => {
     if (!canvasRef.value) return;
     ctx = canvasRef.value.getContext('2d');
@@ -149,7 +207,6 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
     addPlane();
   };
   onMounted(() => {
-    /* ... */
     const imagePromises = planeIconUrls.map(
       (url) =>
         new Promise<HTMLImageElement>((resolve, reject) => {
@@ -180,7 +237,6 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
       .catch((error) => console.error('Could not load plane images:', error));
   });
   onUnmounted(() => {
-    /* ... */
     cancelAnimationFrame(animationFrameId);
     canvasRef.value?.removeEventListener('mousedown', handleStart);
     canvasRef.value?.removeEventListener('mousemove', handleMove);
