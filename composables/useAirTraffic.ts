@@ -18,53 +18,36 @@ const planeIconUrls = [
 export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
   const planes = ref<Plane[]>([]);
   const draggedPlane = ref<Plane | null>(null);
+  // NEW: State to hold the start and end points of the line being drawn
+  const dragPath = ref<{ start: Point; end: Point } | null>(null);
+
   let ctx: CanvasRenderingContext2D | null = null;
   let animationFrameId: number;
-  // We will store all loaded images in this array
   const loadedPlaneImages: HTMLImageElement[] = [];
 
-  const getRandomColor = () => {
-    /* ... (no change) */
-    const colors = [
-      '#ff4d4d',
-      '#ffa64d',
-      '#ffff4d',
-      '#4dff4d',
-      '#4dffff',
-      '#4d4dff',
-      '#ff4dff',
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
   const getDistance = (p1: Point, p2: Point) =>
     Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-
-  // --- MODIFIED CORE LOGIC ---
   const addPlane = () => {
     if (
       planes.value.length < MAX_PLANES &&
       canvasRef.value &&
       loadedPlaneImages.length > 0
     ) {
-      // Pick a random image from our loaded assets
       const randomImage =
         loadedPlaneImages[Math.floor(Math.random() * loadedPlaneImages.length)];
-      // Pass the image to the new Plane instance
       planes.value.push(
         new Plane(canvasRef.value.width, canvasRef.value.height, randomImage)
       );
     }
   };
-
   const checkConflicts = () => {
-    /* ... (no change) */
     planes.value.forEach((p) => (p.warning = null));
     for (let i = 0; i < planes.value.length; i++) {
       for (let j = i + 1; j < planes.value.length; j++) {
         const p1 = planes.value[i];
         const p2 = planes.value[j];
         if (getDistance(p1, p2) < PLANE_CONFIG.CONFLICT_DISTANCE) {
-          if (!p1.warning) p1.warning = { color: getRandomColor() };
+          if (!p1.warning) p1.warning = { color: `#ff8f00` }; // Changed to a consistent amber color
           p2.warning = p1.warning;
         }
       }
@@ -79,68 +62,85 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
 
     ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
 
+    // --- NEW: Draw the path line if it exists ---
+    if (dragPath.value) {
+      ctx.beginPath();
+      ctx.moveTo(dragPath.value.start.x, dragPath.value.start.y);
+      ctx.lineTo(dragPath.value.end.x, dragPath.value.end.y);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 10]);
+      ctx.stroke();
+      ctx.setLineDash([]); // Reset line dash for other drawings
+    }
+
     if (
       planes.value.length < MIN_PLANES ||
       (planes.value.length < MAX_PLANES && Math.random() < 0.005)
-    ) {
+    )
       addPlane();
-    }
-
     planes.value = planes.value.filter((p) => !p.isOffscreen);
     checkConflicts();
     planes.value.forEach((plane) => {
       plane.update(deltaTime);
-      // Call draw without the image, as the plane now holds its own
       plane.draw(ctx!);
     });
-
     animationFrameId = requestAnimationFrame(animate);
   };
 
-  // --- EVENT HANDLERS (no changes) ---
+  // --- REBUILT EVENT HANDLERS ---
   const getEventPoint = (e: MouseEvent | TouchEvent): Point => {
-    /* ... */
     const rect = canvasRef.value!.getBoundingClientRect();
     const pos = 'touches' in e ? e.touches[0] : e;
     return { x: pos.clientX - rect.left, y: pos.clientY - rect.top };
   };
+
   const handleStart = (e: MouseEvent | TouchEvent) => {
-    /* ... */
     e.preventDefault();
     const point = getEventPoint(e);
     for (let i = planes.value.length - 1; i >= 0; i--) {
       const plane = planes.value[i];
-      if (plane.isPointInControlZone(point)) {
+      if (plane.isPointOnIcon(point)) {
+        plane.isPathPlanning = true; // Pause the plane's movement
         draggedPlane.value = plane;
-        draggedPlane.value.isDragging = true;
+        // Start drawing the path from the plane's center
+        dragPath.value = { start: { x: plane.x, y: plane.y }, end: point };
         break;
       }
     }
   };
+
   const handleMove = (e: MouseEvent | TouchEvent) => {
-    /* ... */
-    if (!draggedPlane.value) return;
+    if (!draggedPlane.value || !dragPath.value) return;
     e.preventDefault();
     const point = getEventPoint(e);
-    const newAngle = Math.atan2(
-      point.y - draggedPlane.value.y,
-      point.x - draggedPlane.value.x
-    );
-    draggedPlane.value.angle = newAngle;
-    draggedPlane.value.vx = Math.cos(newAngle) * PLANE_CONFIG.SPEED;
-    draggedPlane.value.vy = Math.sin(newAngle) * PLANE_CONFIG.SPEED;
-  };
-  const handleEnd = () => {
-    /* ... */
-    if (draggedPlane.value) {
-      draggedPlane.value.isDragging = false;
-      draggedPlane.value = null;
-    }
+    // Update the end of the path to the current cursor position
+    dragPath.value.end = point;
   };
 
-  // --- MODIFIED LIFECYCLE HOOKS ---
+  const handleEnd = () => {
+    if (!draggedPlane.value || !dragPath.value) return;
+
+    // Only set new path if the drawn line is longer than a few pixels
+    if (getDistance(dragPath.value.start, dragPath.value.end) > 10) {
+      const newAngle = Math.atan2(
+        dragPath.value.end.y - dragPath.value.start.y,
+        dragPath.value.end.x - dragPath.value.start.x
+      );
+      draggedPlane.value.angle = newAngle;
+      draggedPlane.value.vx = Math.cos(newAngle) * PLANE_CONFIG.SPEED;
+      draggedPlane.value.vy = Math.sin(newAngle) * PLANE_CONFIG.SPEED;
+    }
+
+    draggedPlane.value.isPathPlanning = false; // Unpause the plane
+
+    // Clean up state
+    draggedPlane.value = null;
+    dragPath.value = null;
+  };
+
+  // --- LIFECYCLE HOOKS (no change to logic, just for context) ---
   const setup = () => {
-    /* ... (no change) */
     if (!canvasRef.value) return;
     ctx = canvasRef.value.getContext('2d');
     canvasRef.value.width = window.innerWidth;
@@ -148,26 +148,21 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
     planes.value = [];
     addPlane();
   };
-
   onMounted(() => {
-    // Create a promise for each image to load
-    const imagePromises = planeIconUrls.map((url) => {
-      return new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.src = url;
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(`Failed to load image at ${url}`);
-      });
-    });
-
-    // Wait for all images to load before starting the animation
+    /* ... */
+    const imagePromises = planeIconUrls.map(
+      (url) =>
+        new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.src = url;
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(`Failed to load image at ${url}`);
+        })
+    );
     Promise.all(imagePromises)
       .then((images) => {
-        // All images are loaded, store them and start the simulation
         loadedPlaneImages.push(...images);
-
         setup();
-
         canvasRef.value?.addEventListener('mousedown', handleStart);
         canvasRef.value?.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', handleEnd);
@@ -179,17 +174,13 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
         });
         window.addEventListener('touchend', handleEnd);
         window.addEventListener('resize', setup);
-
         lastTime = performance.now();
         animationFrameId = requestAnimationFrame(animate);
       })
-      .catch((error) => {
-        console.error('Could not load plane images:', error);
-      });
+      .catch((error) => console.error('Could not load plane images:', error));
   });
-
   onUnmounted(() => {
-    /* ... (no change) */
+    /* ... */
     cancelAnimationFrame(animationFrameId);
     canvasRef.value?.removeEventListener('mousedown', handleStart);
     canvasRef.value?.removeEventListener('mousemove', handleMove);
