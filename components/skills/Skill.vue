@@ -24,7 +24,7 @@ const styles = ref(
       <div class="flip-card-front">
         <img :src="icon" :alt="name" />
       </div>
-      <div class="flip-card-back">
+      <div class="flip-card-back bg-white">
         {{ name }}
       </div>
     </div>
