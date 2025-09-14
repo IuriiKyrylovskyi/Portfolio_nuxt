@@ -5,6 +5,7 @@ import RouterLinks from '@/components/navbar/RouterLinks.vue';
 import HeaderContainer from '@/components/common/HeaderContainer.vue';
 import Logo from '@/components/navbar/Logo.vue';
 import ResponsiveMenu from '@/components/navbar/ResponsiveMenu.vue';
+import AtcModeToggle from '../toggleBtn/AtcModeToggle.vue';
 
 const isOpen = ref(false);
 
@@ -28,6 +29,7 @@ const handleMenuClose = () => {
 <template>
   <HeaderContainer>
     <Logo />
+    <AtcModeToggle />
     <RouterLinks />
 
     <ResponsiveMenu

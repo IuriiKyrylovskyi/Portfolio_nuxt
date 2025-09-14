@@ -13,6 +13,7 @@
     "@formkit/core": "^1.6.2",
     "@formkit/nuxt": "^1.6.2",
     "@formkit/vue": "^1.6.2",
+    "@nuxt/image": "^1.11.0",
     "@oku-ui/motion": "^0.3.4",
     "@oku-ui/motion-nuxt": "^0.2.1",
     "nodemailer": "^6.9.13",

@@ -20,7 +20,7 @@ export const projects: IProject[] = [
       },
       {
         img: '/projects/03/4.png',
-        url: 'https://zable.com.au/booking?lat=-28.0099412&lng=153.3910447&location=Benowa+QLD+4217&category=Gastroenterologist',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
       {
         img: '/projects/03/5.png',
@@ -82,15 +82,15 @@ export const projects: IProject[] = [
       },
       {
         img: '/projects/02/2.png',
-        url: 'https://surfgulp.netlify.app/',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
       {
         img: '/projects/02/3.png',
-        url: 'https://surfgulp.netlify.app/',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
       {
         img: '/projects/02/4.png',
-        url: 'https://surfgulp.netlify.app/',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
     ],
     about: 'The project description will be added soon 👨‍💻',
@@ -170,7 +170,7 @@ export const projects: IProject[] = [
       },
       {
         img: '/projects/04/07.png',
-        url: 'https://kyrylovskyi-yurii.netlify.app',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
     ],
     about: 'The project description will be added soon 👨‍💻',
@@ -212,11 +212,11 @@ export const projects: IProject[] = [
       },
       {
         img: '/projects/05/04.png',
-        url: 'https://mental-health-app-six.vercel.app/ua/profile/oksana-pedchenko',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
       {
         img: '/projects/05/05.png',
-        url: 'https://mental-health-app-six.vercel.app/ua/profile/oksana-pedchenko',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
     ],
     about: 'The project description will be added soon 👨‍💻',
@@ -266,11 +266,11 @@ export const projects: IProject[] = [
       },
       {
         img: '/projects/06/04.png',
-        url: 'https://cyber-arena.vercel.app/',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
       {
         img: '/projects/06/05.png',
-        url: 'https://cyber-arena.vercel.app/nft',
+        url: 'https://kyrylovskyi-yurii.netlify.app/1234',
       },
     ],
     about: 'The project description will be added soon 👨‍💻',
