@@ -180,6 +180,7 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
     // --- UPDATED DRAWING LOGIC: DOTS ONLY ---
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
 
+    drawWaypoint(JANJO_WAYPOINT);
     // Draw all assigned flight paths as faint dots
     planes.value.forEach((plane) => {
       if (plane.path) {
@@ -203,7 +204,6 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
       plane.update(deltaTime);
       plane.draw(ctx!);
     });
-    drawWaypoint(JANJO_WAYPOINT);
     animationFrameId = requestAnimationFrame(animate);
   };
 
@@ -267,11 +267,12 @@ export function useAirTraffic(canvasRef: Ref<HTMLCanvasElement | null>) {
     ctx = canvasRef.value.getContext('2d');
     canvasRef.value.width = window.innerWidth;
     canvasRef.value.height = window.innerHeight;
-    planes.value = [];
-    addPlane();
 
     JANJO_WAYPOINT.x = canvasRef.value.width - 30; // 60 pixels from the right border
     JANJO_WAYPOINT.y = 150; // Vertically centered
+
+    planes.value = [];
+    addPlane();
   };
   onMounted(() => {
     const imagePromises = planeIconUrls.map(

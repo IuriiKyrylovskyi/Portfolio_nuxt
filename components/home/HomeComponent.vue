@@ -1,10 +1,17 @@
-<script>
-import { Routes } from '~/interfaces/global';
-</script>
+<script></script>
 
 <template>
   <div class="h-1/2 lg:h-full lg:w-1/2 relative">
-    <img src="@/assets/images/me/3.png" alt="" fill class="object-contain" />
+    <nuxt-img
+      src="./me/3.png"
+      alt="creator"
+      :placeholder="[508, 654]"
+      width="508"
+      height="654"
+      fill
+      class="object-contain"
+      loading="lazy"
+    />
   </div>
   <div
     class="h-1/2 lg:h-full lg:w-1/2 flex flex-col gap-8 items-center justify-center my-8"

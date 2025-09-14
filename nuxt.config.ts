@@ -13,6 +13,7 @@ export default defineNuxtConfig({
     '@oku-ui/motion-nuxt',
     '@nuxtjs/google-fonts',
     'nuxt-swiper',
+    "@nuxt/image"
   ],
 
   formkit: {
