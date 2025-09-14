@@ -3,8 +3,8 @@
 <template>
   <div class="h-1/2 lg:h-full lg:w-1/2 relative">
     <nuxt-img
-      src="./me/3.png"
-      alt="creator"
+      src="/me/3.png"
+      alt=""
       :placeholder="[508, 654]"
       width="508"
       height="654"
@@ -25,17 +25,5 @@
       showcases a diverse collection of projects that reflect my commitment to
       excellence.
     </p>
-    <div class="w-full flex gap-4">
-      <!-- <button
-        class="p-4 rounded-lg ring-1 ring-[#e5e7eb] bg-black text-white transition duration-300 linear hover:bg-white hover:text-black hover:animate-none"
-      >
-        <NuxtLink :to="Routes.PORTFOLIO">View My Works</NuxtLink>
-      </button>
-      <button
-        class="p-4 rounded-lg ring-1 ring-[#e5e7eb] bg-black text-white animate-pulse transition duration-300 linear hover:bg-white hover:text-black hover:animate-none"
-      >
-        <RouterLink :to="Routes.CONTACT">Contact Me</RouterLink>
-      </button> -->
-    </div>
   </div>
 </template>

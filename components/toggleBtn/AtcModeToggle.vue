@@ -18,7 +18,7 @@ const { isTraffic, toggleTraffic } = useTraffic();
       class="flex items-center justify-between cursor-pointer w-full h-full rounded-full toggle-switch-bg transition-all"
     >
       <nuxt-img
-        :src="`${isTraffic ? './radars/radar-glow.png' : './radars/radar.png'}`"
+        :src="`${isTraffic ? '/radars/radar-glow.png' : '/radars/radar.png'}`"
         :placeholder="[30, 30]"
         width="40"
         height="40"
