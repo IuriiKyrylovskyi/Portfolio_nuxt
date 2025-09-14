@@ -4,7 +4,7 @@ const { isTraffic, toggleTraffic } = useTraffic();
 
 <template>
   <div
-    class="relative inline-block w-14 h-8 transition duration-200 ease-linear rounded-full"
+    class="invisible lg:visible relative inline-block w-14 h-8 transition duration-200 ease-linear rounded-full"
   >
     <input
       type="checkbox"
