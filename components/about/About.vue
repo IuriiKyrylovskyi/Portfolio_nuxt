@@ -2,7 +2,7 @@
   <div class="flex flex-col items-center gap-16 md:flex-row md:gap-4">
     <div class="h-full lg:h-full lg:w-1/3 relative min-w-[300px]">
       <nuxt-img
-        src="./me/7.png"
+        src="/me/7.png"
         alt="creator"
         :placeholder="[334, 430]"
         width="334"

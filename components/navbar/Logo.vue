@@ -11,7 +11,7 @@ import { Routes } from '@/interfaces/global';
     >
       <span>K</span>
       <nuxt-img
-        src="./logo/logo-transparent.png"
+        src="/logo/logo-transparent.png"
         alt="Yurii Kyrylovskyi logo"
         :placeholder="[56, 56]"
         width="56"

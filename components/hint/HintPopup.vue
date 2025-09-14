@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onUnmounted } from 'vue';
 
 // Define the state for the hint popup
 interface HintState {
@@ -76,7 +76,7 @@ watch(
 
     showHint({
       message: 'Set a traffic queue to NATS via JANJO',
-      src: './atc/atc.png',
+      src: '/atc/atc.png',
       showCloseButton: true,
     });
   },
