@@ -4,6 +4,7 @@ export enum Routes {
   PORTFOLIO = '/portfolio',
   SKILLS = '/skills',
   CONTACT = '/contact-me',
+  PLAY = '/play',
   HELP = '/help',
 }
 export enum RouteNames {
@@ -12,6 +13,7 @@ export enum RouteNames {
   PORTFOLIO = 'Portfolio',
   SKILLS = 'Skills',
   CONTACT = 'Contact me',
+  PLAY = 'PLAY',
   HELP = 'Help UKRAINE',
 }
 

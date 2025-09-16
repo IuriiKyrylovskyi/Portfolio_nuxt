@@ -63,7 +63,7 @@ const { isOpen } = toRefs(props);
         :class="index === appLinks.length - 1 ? 'help' : ''"
         :key="link.title"
       >
-        <NuxtLink :to="link.url" @click="handleMenuClose">{{
+        <NuxtLink class="mob-item" :to="link.url" @click="handleMenuClose">{{
           link.title
         }}</NuxtLink>
       </Motion>
@@ -88,5 +88,15 @@ const { isOpen } = toRefs(props);
 }
 .help a {
   font-weight: 600;
+}
+
+a.router-link-exact-active {
+  font-weight: 600;
+  color: rgb(0, 115, 255);
+  background-color: yellow;
+  padding: 0 10px;
+  border: 1px solid rgb(0, 115, 255);
+  border-radius: 4px;
+  padding-bottom: 4px;
 }
 </style>
