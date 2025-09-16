@@ -7,16 +7,28 @@ export interface Warning {
   color: string;
 }
 
+export interface Strip {
+  id: string; // Unique identifier for the strip
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  approachAngle: number; // The desired angle (in radians) to approach/depart this strip
+  angleTolerance: number; // How much deviation is allowed (in radians)
+}
+
 export const PLANE_CONFIG = {
   SIZE: 40,
   SPEED: 0.4,
   CONFLICT_DISTANCE: 120,
   SCALE_DURATION_MS: 1000,
-  TURN_SPEED: 0.1, // Slightly increased turn speed for responsiveness
-  PATH_ACCURACY: 20, // How close to a waypoint to advance to the next
+  TURN_SPEED: 0.1,
+  PATH_ACCURACY: 10,
+  INITIAL_DEPARTURE_SPEED: 0.5,
+  DEPARTURE_PATH_LENGTH: 150,
+  MIN_DEPARTURE_INTERVAL_MS: 2000, // <-- NEW: Minimum 2 seconds between departures
 };
 
-// This helper function remains crucial for smooth turning
 function lerpAngle(a: number, b: number, t: number): number {
   let diff = b - a;
   if (diff > Math.PI) diff -= 2 * Math.PI;
@@ -32,17 +44,22 @@ export class Plane {
   vy: number;
   angle: number;
   scale: number;
-  scaleDirection: 1 | -1 | 0;
+  scaleDirection: 1 | -1 | 0; // 1 = growing, -1 = shrinking, 0 = stable
   isOffscreen: boolean;
   warning: Warning | null;
   image: HTMLImageElement;
   path: Point[] | null = null;
   pathIndex: number = 0;
 
+  isDeparting: boolean = false;
+  isLanding: boolean = false;
+
   constructor(
     private canvasWidth: number,
     private canvasHeight: number,
-    image: HTMLImageElement
+    image: HTMLImageElement,
+    initialScale: number = 1,
+    initialScaleDirection: 1 | -1 | 0 = 0
   ) {
     this.id = Date.now() + Math.random();
     this.image = image;
@@ -51,32 +68,32 @@ export class Plane {
     this.vx = 0;
     this.vy = 0;
     this.angle = 0;
-    this.reset();
-    this.scale = 0;
-    this.scaleDirection = 1;
+
+    this.scale = initialScale;
+    this.scaleDirection = initialScaleDirection;
     this.isOffscreen = false;
     this.warning = null;
   }
 
-  reset(): void {
+  resetRandomEdgeSpawn(): void {
     const edge = Math.floor(Math.random() * 4);
     switch (edge) {
       case 0:
         this.x = Math.random() * this.canvasWidth;
         this.y = -PLANE_CONFIG.SIZE;
-        break;
+        break; // Top
       case 1:
         this.x = this.canvasWidth + PLANE_CONFIG.SIZE;
         this.y = Math.random() * this.canvasHeight;
-        break;
+        break; // Right
       case 2:
         this.x = Math.random() * this.canvasWidth;
         this.y = this.canvasHeight + PLANE_CONFIG.SIZE;
-        break;
+        break; // Bottom
       case 3:
         this.x = -PLANE_CONFIG.SIZE;
         this.y = Math.random() * this.canvasHeight;
-        break;
+        break; // Left
     }
     const targetX =
       this.canvasWidth / 2 + (Math.random() - 0.5) * this.canvasWidth * 0.5;
@@ -85,72 +102,98 @@ export class Plane {
     this.angle = Math.atan2(targetY - this.y, targetX - this.x);
     this.vx = Math.cos(this.angle) * PLANE_CONFIG.SPEED;
     this.vy = Math.sin(this.angle) * PLANE_CONFIG.SPEED;
+    this.scale = 1;
+    this.scaleDirection = 0;
+    this.isDeparting = false;
+    this.isLanding = false;
   }
 
-  // --- UPDATE METHOD FOR DENSE, NORMALIZED PATHS ---
+  // --- MODIFIED Plane.update: No longer takes a single landingStrip, it's checked externally ---
   update(deltaTime: number): void {
-    // Handle scaling animation
+    // Handle scaling animation (same as before)
     if (this.scaleDirection !== 0) {
       const scaleChange =
         (deltaTime / PLANE_CONFIG.SCALE_DURATION_MS) * this.scaleDirection;
       this.scale = Math.max(0, Math.min(1, this.scale + scaleChange));
-      if (this.scale >= 1 || this.scale <= 0) this.scaleDirection = 0;
-    }
 
-    // --- Simplified and more robust path following logic ---
-    if (
-      this.path &&
-      this.path.length > 0 &&
-      this.pathIndex < this.path.length
-    ) {
-      const targetPoint = this.path[this.pathIndex];
-      const distance = Math.sqrt(
-        (targetPoint.x - this.x) ** 2 + (targetPoint.y - this.y) ** 2
-      );
-
-      // If close enough to the waypoint, simply advance to the next one.
-      // The dense path makes this simple check very reliable.
-      if (distance < PLANE_CONFIG.PATH_ACCURACY) {
-        this.pathIndex++;
+      if (this.scale >= 1 && this.scaleDirection === 1) {
+        // Done growing
+        this.scaleDirection = 0;
+        this.isDeparting = false; // Finished departing process
       }
-
-      // Steer towards the current target, if it still exists
-      const currentTarget = this.path[this.pathIndex];
-      if (currentTarget) {
-        const targetAngle = Math.atan2(
-          currentTarget.y - this.y,
-          currentTarget.x - this.x
-        );
-        this.angle = lerpAngle(
-          this.angle,
-          targetAngle,
-          PLANE_CONFIG.TURN_SPEED
-        );
-      } else {
-        // Path is complete
-        this.path = null;
+      if (this.scale <= 0 && this.scaleDirection === -1) {
+        // Done shrinking
+        this.scaleDirection = 0;
+        this.isOffscreen = true; // Plane is effectively "gone" after shrinking
+        this.isLanding = false; // Finished landing process
       }
     }
 
-    // Update velocity and position based on the angle
-    this.vx = Math.cos(this.angle) * PLANE_CONFIG.SPEED;
-    this.vy = Math.sin(this.angle) * PLANE_CONFIG.SPEED;
-    this.x += this.vx;
-    this.y += this.vy;
+    // Only move the plane if it's visible (not fully shrunk)
+    if (this.scale > 0) {
+      // Path Following Logic (same as previous)
+      if (
+        this.path &&
+        this.path.length > 0 &&
+        this.pathIndex < this.path.length
+      ) {
+        const targetPoint = this.path[this.pathIndex];
+        const distance = Math.sqrt(
+          (targetPoint.x - this.x) ** 2 + (targetPoint.y - this.y) ** 2
+        );
 
-    // Check if offscreen
-    const offscreenMargin = PLANE_CONFIG.SIZE * 2;
-    if (
-      this.x < -offscreenMargin ||
-      this.x > this.canvasWidth + offscreenMargin ||
-      this.y < -offscreenMargin ||
-      this.y > this.canvasHeight + offscreenMargin
-    ) {
-      this.isOffscreen = true;
+        if (distance < PLANE_CONFIG.PATH_ACCURACY) {
+          this.pathIndex++;
+        }
+        const currentTarget = this.path[this.pathIndex];
+        if (currentTarget) {
+          const targetAngle = Math.atan2(
+            currentTarget.y - this.y,
+            currentTarget.x - this.x
+          );
+          this.angle = lerpAngle(
+            this.angle,
+            targetAngle,
+            PLANE_CONFIG.TURN_SPEED
+          );
+        } else {
+          this.path = null; // Path complete
+        }
+      }
+
+      // Adjust speed for departing planes (same as before)
+      let currentSpeed = PLANE_CONFIG.SPEED;
+      if (this.isDeparting && this.scale < 1) {
+        currentSpeed =
+          PLANE_CONFIG.INITIAL_DEPARTURE_SPEED +
+          (PLANE_CONFIG.SPEED - PLANE_CONFIG.INITIAL_DEPARTURE_SPEED) *
+            this.scale;
+      }
+
+      this.vx = Math.cos(this.angle) * currentSpeed;
+      this.vy = Math.sin(this.angle) * currentSpeed;
+      this.x += this.vx;
+      this.y += this.vy;
+
+      // --- REMOVED: Landing Strip Detection from here. It's now handled in composable. ---
+
+      // Check if offscreen (only if not shrinking via landing)
+      if (this.scaleDirection !== -1) {
+        const offscreenMargin = PLANE_CONFIG.SIZE * 2;
+        if (
+          this.x < -offscreenMargin ||
+          this.x > this.canvasWidth + offscreenMargin ||
+          this.y < -offscreenMargin ||
+          this.y > this.canvasHeight + offscreenMargin
+        ) {
+          this.isOffscreen = true;
+        }
+      }
     }
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
+    /* ... (no changes) */
     if (this.scale <= 0) return;
     ctx.save();
     ctx.translate(this.x, this.y);
@@ -176,6 +219,7 @@ export class Plane {
   }
 
   isPointOnIcon(point: Point): boolean {
+    /* ... (no changes) */
     const distance = Math.sqrt(
       (point.x - this.x) ** 2 + (point.y - this.y) ** 2
     );
