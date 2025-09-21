@@ -90,3 +90,8 @@ body {
   max-width: 1400px;
   margin: 0 auto;
 }
+
+.no-scroll {
+  overflow: hidden !important;
+  height: 100vh;
+}
