@@ -6,14 +6,12 @@ import {
   type Runway,
 } from '~/interfaces/traffic';
 
-// --- Configuration Interfaces ---
 export interface Waypoint {
   name: string;
   x: number;
   y: number;
   description?: string;
 }
-
 export interface RunwayConfig {
   id: string;
   centerX: number;
@@ -23,14 +21,12 @@ export interface RunwayConfig {
   width?: number;
   angleTolerance?: number;
 }
-
 export interface AirTrafficOptions {
   runways: (width: number, height: number) => RunwayConfig[];
   waypoints: (width: number, height: number) => Waypoint[];
   planeIconUrls: string[];
 }
 
-// --- Utility Functions ---
 const normalizePathByDistance = (path: Point[], step: number): Point[] => {
   if (path.length < 2) return path;
   const newPath: Point[] = [path[0]];
@@ -56,14 +52,12 @@ const normalizePathByDistance = (path: Point[], step: number): Point[] => {
   }
   return newPath;
 };
-
 const findClosestPointIndex = (position: Point, path: Point[]): number => {
   if (!path || path.length === 0) return 0;
   let closestIndex = 0;
   let minDistance = Infinity;
   for (let i = 0; i < path.length; i++) {
     const dx = position.x - path[i].x;
-    // FIX: Removed the typo "a =" which was causing the error.
     const dy = position.y - path[i].y;
     const distance = dx * dx + dy * dy;
     if (distance < minDistance) {
@@ -73,15 +67,36 @@ const findClosestPointIndex = (position: Point, path: Point[]): number => {
   }
   return closestIndex;
 };
-
 const getAngleDifference = (angle1: number, angle2: number): number => {
   let diff = angle2 - angle1;
   while (diff > Math.PI) diff -= 2 * Math.PI;
   while (diff < -Math.PI) diff += 2 * Math.PI;
   return Math.abs(diff);
 };
+const createGhostImage = (
+  image: HTMLImageElement
+): Promise<HTMLImageElement> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return resolve(image);
+    canvas.width = image.width;
+    canvas.height = image.height;
+    ctx.drawImage(image, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+    }
+    ctx.putImageData(imageData, 0, 0);
+    const ghostImage = new Image();
+    ghostImage.src = canvas.toDataURL();
+    ghostImage.onload = () => resolve(ghostImage);
+  });
+};
 
-// --- Constants ---
 const MAX_PLANES = 7;
 const MIN_PLANES = 1;
 const PATH_RAW_SIMPLIFY_THRESHOLD = 20;
@@ -91,70 +106,42 @@ export function useAirTraffic(
   canvasRef: Ref<HTMLCanvasElement | null>,
   options: AirTrafficOptions
 ) {
-  // --- State Refs ---
   const planes = ref<Plane[]>([]);
   const runways = ref<Runway[]>([]);
   const waypoints = ref<Waypoint[]>([]);
   const draggedPlane = ref<Plane | null>(null);
   const rawDragPath = ref<Point[] | null>(null);
-
-  // --- Private Variables ---
+  const landingProjection = ref<{ runway: Runway; plane: Plane } | null>(null);
   let ctx: CanvasRenderingContext2D | null = null;
   let animationFrameId: number;
-  const loadedPlaneImages: HTMLImageElement[] = [];
+  const loadedPlaneImages: {
+    main: HTMLImageElement;
+    ghost: HTMLImageElement;
+  }[] = [];
   let lastDepartureTime = 0;
   let lastRandomSpawnTime = 0;
+  const {
+    runways: runwayConfigGenerator,
+    waypoints: waypointConfigGenerator,
+    planeIconUrls,
+  } = options;
 
-  const { runwayConfigGenerator, waypointConfigGenerator, planeIconUrls } = {
-    runwayConfigGenerator: options.runways,
-    waypointConfigGenerator: options.waypoints,
-    planeIconUrls: options.planeIconUrls,
-  };
-
-  // --- Core Logic ---
   const getDistance = (p1: Point, p2: Point) =>
     Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-
-  const checkConflicts = () => {
-    planes.value.forEach((p) => (p.warning = null));
-    for (let i = 0; i < planes.value.length; i++) {
-      for (let j = i + 1; j < planes.value.length; j++) {
-        const p1 = planes.value[i];
-        const p2 = planes.value[j];
-        if (getDistance(p1, p2) < PLANE_CONFIG.CONFLICT_DISTANCE) {
-          if (!p1.warning) p1.warning = { color: `#ff8f00` };
-          p2.warning = p1.warning;
-        }
-      }
-    }
-  };
-
   const createRunway = (
     id: string,
     centerX: number,
     centerY: number,
     direction: number,
-    length: number = 100,
-    width: number = 10,
-    angleTolerance: number = Math.PI / 8
+    length = 100,
+    width = 10,
+    angleTolerance = Math.PI / 8
   ): Runway => {
-    const landingApproachAngle = direction;
-    const departureAngle = direction;
     const halfLength = length / 2;
-
-    const departurePoint = {
-      x: centerX + Math.cos(direction) * halfLength,
-      y: centerY + Math.sin(direction) * halfLength,
-    };
     const landingPoint = {
       x: centerX - Math.cos(direction) * halfLength,
       y: centerY - Math.sin(direction) * halfLength,
     };
-    const landingApproachPoint = {
-      x: landingPoint.x - Math.cos(direction) * PLANE_CONFIG.SIZE,
-      y: landingPoint.y - Math.sin(direction) * PLANE_CONFIG.SIZE,
-    };
-
     return {
       id,
       centerX,
@@ -162,153 +149,143 @@ export function useAirTraffic(
       direction,
       length,
       width,
-      landingApproachAngle,
-      departureAngle,
-      landingPoint,
-      departurePoint,
-      landingApproachPoint,
       angleTolerance,
+      landingApproachAngle: direction,
+      departureAngle: direction,
+      landingPoint,
+      departurePoint: {
+        x: centerX + Math.cos(direction) * halfLength,
+        y: centerY + Math.sin(direction) * halfLength,
+      },
+      landingApproachPoint: {
+        x: landingPoint.x - Math.cos(direction) * PLANE_CONFIG.SIZE,
+        y: landingPoint.y - Math.sin(direction) * PLANE_CONFIG.SIZE,
+      },
     };
   };
-
   const addPlane = (timestamp: number) => {
     if (
       planes.value.length >= MAX_PLANES ||
       loadedPlaneImages.length === 0 ||
       !canvasRef.value
-    ) {
+    )
       return;
-    }
-
-    const randomImage =
+    const randomImages =
       loadedPlaneImages[Math.floor(Math.random() * loadedPlaneImages.length)];
     const newPlane = new Plane(
       canvasRef.value.width,
       canvasRef.value.height,
-      randomImage
+      randomImages.main,
+      randomImages.ghost
     );
-
-    // Departure from a runway
     if (
       runways.value.length > 0 &&
       Math.random() < 0.5 &&
       timestamp - lastDepartureTime > PLANE_CONFIG.MIN_DEPARTURE_INTERVAL_MS
     ) {
-      const randomRunway =
+      const runway =
         runways.value[Math.floor(Math.random() * runways.value.length)];
-      const { x: startX, y: startY } = randomRunway.departurePoint;
-      const startAngle = randomRunway.departureAngle;
-      const targetPathX =
-        startX + Math.cos(startAngle) * PLANE_CONFIG.DEPARTURE_PATH_LENGTH;
-      const targetPathY =
-        startY + Math.sin(startAngle) * PLANE_CONFIG.DEPARTURE_PATH_LENGTH;
+      const { x, y } = runway.departurePoint;
+      const angle = runway.departureAngle;
       const path = normalizePathByDistance(
         [
-          { x: startX, y: startY },
-          { x: targetPathX, y: targetPathY },
+          { x, y },
+          {
+            x: x + Math.cos(angle) * PLANE_CONFIG.DEPARTURE_PATH_LENGTH,
+            y: y + Math.sin(angle) * PLANE_CONFIG.DEPARTURE_PATH_LENGTH,
+          },
         ],
         PATH_NORMALIZED_STEP
       );
-      newPlane.initSpawn(startX, startY, startAngle, path, 0, 1, true);
+      newPlane.initSpawn(x, y, angle, path, 0, 1, true);
       lastDepartureTime = timestamp;
-    }
-    // Random spawn from an edge
-    else if (
+    } else if (
       timestamp - lastRandomSpawnTime >
       PLANE_CONFIG.MIN_DEPARTURE_INTERVAL_MS * 0.75
     ) {
       const edge = Math.floor(Math.random() * 4);
-      let startX: number, startY: number, initialAngle: number;
-      let targetX: number, targetY: number;
-
+      let sx, sy, sa, tx, ty;
       switch (edge) {
-        case 0: // Top
-          startX = Math.random() * canvasRef.value.width;
-          startY = -PLANE_CONFIG.SIZE * 2;
-          initialAngle = Math.PI / 2;
-          targetX = startX;
-          targetY = PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
+        case 0:
+          sx = Math.random() * canvasRef.value.width;
+          sy = -PLANE_CONFIG.SIZE * 2;
+          sa = Math.PI / 2;
+          tx = sx;
+          ty = PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
           break;
-        case 1: // Right
-          startX = canvasRef.value.width + PLANE_CONFIG.SIZE * 2;
-          startY = Math.random() * canvasRef.value.height;
-          initialAngle = Math.PI;
-          targetX =
-            canvasRef.value.width - PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
-          targetY = startY;
+        case 1:
+          sx = canvasRef.value.width + PLANE_CONFIG.SIZE * 2;
+          sy = Math.random() * canvasRef.value.height;
+          sa = Math.PI;
+          tx = canvasRef.value.width - PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
+          ty = sy;
           break;
-        case 2: // Bottom
-          startX = Math.random() * canvasRef.value.width;
-          startY = canvasRef.value.height + PLANE_CONFIG.SIZE * 2;
-          initialAngle = (3 * Math.PI) / 2;
-          targetX = startX;
-          targetY =
-            canvasRef.value.height - PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
+        case 2:
+          sx = Math.random() * canvasRef.value.width;
+          sy = canvasRef.value.height + PLANE_CONFIG.SIZE * 2;
+          sa = (3 * Math.PI) / 2;
+          tx = sx;
+          ty = canvasRef.value.height - PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
           break;
-        default: // Left
-          startX = -PLANE_CONFIG.SIZE * 2;
-          startY = Math.random() * canvasRef.value.height;
-          initialAngle = 0;
-          targetX = PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
-          targetY = startY;
+        default:
+          sx = -PLANE_CONFIG.SIZE * 2;
+          sy = Math.random() * canvasRef.value.height;
+          sa = 0;
+          tx = PLANE_CONFIG.INITIAL_APPEAR_PATH_LENGTH;
+          ty = sy;
           break;
       }
-
-      const path = normalizePathByDistance(
-        [
-          { x: startX, y: startY },
-          { x: targetX, y: targetY },
-        ],
-        PATH_NORMALIZED_STEP
+      newPlane.initSpawn(
+        sx,
+        sy,
+        sa,
+        normalizePathByDistance(
+          [
+            { x: sx, y: sy },
+            { x: tx, y: ty },
+          ],
+          PATH_NORMALIZED_STEP
+        ),
+        0,
+        1,
+        false
       );
-      newPlane.initSpawn(startX, startY, initialAngle, path, 0, 1, false);
       lastRandomSpawnTime = timestamp;
     } else {
-      return; // Conditions not met, don't add a plane
+      return;
     }
     planes.value.push(newPlane);
   };
-
-  // --- Drawing Functions ---
   const drawWaypoint = (waypoint: Waypoint) => {
     if (!ctx) return;
     ctx.save();
     ctx.translate(waypoint.x, waypoint.y);
-
-    // Draw the name
     ctx.font = 'bold 16px Arial';
     ctx.fillStyle = 'white';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.fillText(waypoint.name, 24, -26);
-
-    // Draw the optional description
     if (waypoint.description) {
       ctx.font = '14px italian Arial';
       ctx.fillStyle = '#9e9e9e';
       ctx.fillText(waypoint.description, -20, 2);
     }
-
-    // Draw icon (crosshairs in circle)
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2); // Outer circle
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(0, 0, 4, 0, Math.PI * 2); // Inner circle
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(-7, 0);
-    ctx.lineTo(7, 0); // Horizontal line
+    ctx.lineTo(7, 0);
     ctx.moveTo(0, -7);
-    ctx.lineTo(0, 7); // Vertical line
+    ctx.lineTo(0, 7);
     ctx.stroke();
-
     ctx.restore();
   };
-
-  // Draws a runway. Unchanged, as it already operates on a generic Runway object.
   const drawRunway = (runway: Runway) => {
     if (!ctx) return;
     ctx.save();
@@ -324,15 +301,6 @@ export function useAirTraffic(
       runway.width
     );
     ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(255, 192, 203, 0.2)';
-    const landingAreaLocalStartX = -runway.length / 2 - PLANE_CONFIG.SIZE;
-    const landingAreaWidth = PLANE_CONFIG.SIZE;
-    ctx.fillRect(
-      landingAreaLocalStartX,
-      -runway.width / 2,
-      landingAreaWidth,
-      runway.width
-    );
     const arrowLength = runway.length * 0.2;
     const arrowHeadSize = 8;
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
@@ -380,15 +348,12 @@ export function useAirTraffic(
     ctx.restore();
   };
 
-  // --- Animation Loop ---
   let lastTime = 0;
   const animate = (timestamp: number) => {
     if (!ctx || !canvasRef.value) return;
     const deltaTime = timestamp - lastTime;
     lastTime = timestamp;
     ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
-
-    // Draw plane paths
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     planes.value.forEach((plane) => {
       if (
@@ -396,7 +361,10 @@ export function useAirTraffic(
         plane.path &&
         plane.pathIndex < plane.path.length
       ) {
+        const isBlinkingPath =
+          draggedPlane.value?.id === plane.id && !!landingProjection.value;
         for (let i = plane.pathIndex; i < plane.path.length; i++) {
+          if (isBlinkingPath && Date.now() % 600 < 300) continue;
           const point = plane.path[i];
           ctx.beginPath();
           ctx.arc(point.x, point.y, 1.5, 0, Math.PI * 2);
@@ -404,72 +372,41 @@ export function useAirTraffic(
         }
       }
     });
-
-    // Add new planes if needed
-    if (
-      planes.value.filter((p) => !p.isLanding).length < MIN_PLANES ||
-      (planes.value.filter((p) => !p.isLanding).length < MAX_PLANES &&
-        Math.random() < 0.005)
-    ) {
-      addPlane(timestamp);
+    if (landingProjection.value && ctx) {
+      const { runway, plane } = landingProjection.value;
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.translate(runway.landingPoint.x, runway.landingPoint.y);
+      ctx.rotate(runway.landingApproachAngle);
+      ctx.drawImage(
+        plane.ghostImage,
+        -PLANE_CONFIG.SIZE / 2,
+        -PLANE_CONFIG.SIZE / 2,
+        PLANE_CONFIG.SIZE,
+        PLANE_CONFIG.SIZE
+      );
+      ctx.restore();
     }
-
-    // Update and draw planes
+    if (
+      planes.value.length < MIN_PLANES ||
+      (planes.value.length < MAX_PLANES && Math.random() < 0.005)
+    )
+      addPlane(timestamp);
     planes.value = planes.value.filter((p) => !p.isOffscreen);
-    checkConflicts();
     planes.value.forEach((plane) => {
       plane.update(deltaTime);
-
-      // Landing Detection Logic
-      if (
-        !plane.isLanding &&
-        !plane.isDeparting &&
-        plane.scale === 1 &&
-        plane.scaleDirection === 0
-      ) {
-        for (const runway of runways.value) {
-          const distanceToApproachPoint = getDistance(
-            plane,
-            runway.landingApproachPoint
-          );
-
-          if (distanceToApproachPoint < PLANE_CONFIG.SIZE) {
-            const angleDiff = getAngleDifference(
-              plane.angle,
-              runway.landingApproachAngle
-            );
-            const isWithinAngle = angleDiff <= runway.angleTolerance;
-
-            if (isWithinAngle) {
-              plane.isLanding = true;
-              plane.scaleDirection = -1;
-              plane.path = null;
-              plane.setLandingTarget(
-                runway.landingPoint.x,
-                runway.landingPoint.y
-              );
-              break;
-            }
-          }
-        }
-      }
       plane.draw(ctx!);
     });
-
-    // Draw scenery
-    waypoints.value.forEach((waypoint) => drawWaypoint(waypoint));
-    runways.value.forEach((runway) => drawRunway(runway));
-
+    waypoints.value.forEach(drawWaypoint);
+    runways.value.forEach(drawRunway);
     animationFrameId = requestAnimationFrame(animate);
   };
 
-  // --- Event Handlers ---
   const getEventPoint = (e: MouseEvent | TouchEvent): Point => {
     const rect = canvasRef.value!.getBoundingClientRect();
     const pos = 'touches' in e ? e.touches[0] : e;
     return { x: pos.clientX - rect.left, y: pos.clientY - rect.top };
   };
-
   const handleStart = (e: MouseEvent | TouchEvent) => {
     e.preventDefault();
     const point = getEventPoint(e);
@@ -479,51 +416,93 @@ export function useAirTraffic(
         draggedPlane.value = plane;
         rawDragPath.value = [{ x: plane.x, y: plane.y }];
         plane.path = null;
+        // Reset approaching landing state when starting new path
+        plane.setApproachingLanding(false);
         break;
       }
     }
   };
 
+  // Updated handleMove function with enhanced landing detection
   const handleMove = (e: MouseEvent | TouchEvent) => {
     if (!draggedPlane.value || !rawDragPath.value) return;
     e.preventDefault();
     const point = getEventPoint(e);
     const lastPoint = rawDragPath.value[rawDragPath.value.length - 1];
-
     if (getDistance(point, lastPoint) > PATH_RAW_SIMPLIFY_THRESHOLD) {
       rawDragPath.value.push(point);
       const normalizedPath = normalizePathByDistance(
         rawDragPath.value,
         PATH_NORMALIZED_STEP
       );
-      const closestIndex = findClosestPointIndex(
+      landingProjection.value = null;
+
+      // Reset approaching landing state
+      draggedPlane.value.setApproachingLanding(false);
+
+      if (normalizedPath.length >= 2) {
+        const pathEnd = normalizedPath[normalizedPath.length - 1];
+        const pathSecondToEnd = normalizedPath[normalizedPath.length - 2];
+        const approachAngle = Math.atan2(
+          pathEnd.y - pathSecondToEnd.y,
+          pathEnd.x - pathSecondToEnd.x
+        );
+        for (const runway of runways.value) {
+          if (
+            getDistance(pathEnd, runway.landingPoint) < 60 &&
+            getAngleDifference(approachAngle, runway.landingApproachAngle) <
+              runway.angleTolerance
+          ) {
+            landingProjection.value = { runway, plane: draggedPlane.value };
+            normalizedPath[normalizedPath.length - 1] = runway.landingPoint;
+
+            // Set approaching landing state for opacity change
+            draggedPlane.value.setApproachingLanding(true);
+            break;
+          }
+        }
+      }
+      draggedPlane.value.path = normalizedPath;
+      draggedPlane.value.pathIndex = findClosestPointIndex(
         { x: draggedPlane.value.x, y: draggedPlane.value.y },
         normalizedPath
       );
-      draggedPlane.value.path = normalizedPath;
-      draggedPlane.value.pathIndex = closestIndex;
     }
   };
 
+  // Updated handleEnd function with corrected landing logic
   const handleEnd = () => {
+    if (draggedPlane.value && landingProjection.value) {
+      const plane = draggedPlane.value;
+      const runway = landingProjection.value.runway;
+
+      // Set up landing target but don't start landing immediately
+      plane.setLandingTarget(runway.centerX, runway.centerY);
+
+      // Keep approaching state (0.5 opacity) but don't start actual landing yet
+      plane.setApproachingLanding(true);
+
+      // The plane will complete its path first, then start landing when path is done
+    } else if (draggedPlane.value) {
+      // Reset approaching state if not landing
+      draggedPlane.value.setApproachingLanding(false);
+    }
+
     draggedPlane.value = null;
     rawDragPath.value = null;
+    landingProjection.value = null;
   };
 
-  // --- Setup and Lifecycle Hooks ---
   const setup = () => {
     if (!canvasRef.value) return;
     ctx = canvasRef.value.getContext('2d');
-
     const cvsWidth = window.innerWidth;
     const cvsHeight = window.innerHeight;
     canvasRef.value.width = cvsWidth;
     canvasRef.value.height = cvsHeight;
-
     planes.value = [];
     lastDepartureTime = performance.now();
     lastRandomSpawnTime = performance.now();
-
     waypoints.value = waypointConfigGenerator(cvsWidth, cvsHeight);
     runways.value = runwayConfigGenerator(cvsWidth, cvsHeight).map((config) =>
       createRunway(
@@ -536,21 +515,24 @@ export function useAirTraffic(
         config.angleTolerance
       )
     );
-
     addPlane(performance.now());
   };
 
   onMounted(() => {
     const imagePromises = planeIconUrls.map(
       (url) =>
-        new Promise<HTMLImageElement>((resolve, reject) => {
-          const img = new Image();
-          img.src = url;
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(`Failed to load image at ${url}`);
-        })
+        new Promise<{ main: HTMLImageElement; ghost: HTMLImageElement }>(
+          (resolve, reject) => {
+            const img = new Image();
+            img.src = url;
+            img.onload = async () => {
+              const ghostImg = await createGhostImage(img);
+              resolve({ main: img, ghost: ghostImg });
+            };
+            img.onerror = () => reject(`Failed to load image at ${url}`);
+          }
+        )
     );
-
     Promise.all(imagePromises)
       .then((images) => {
         loadedPlaneImages.push(...images);
@@ -565,13 +547,12 @@ export function useAirTraffic(
           passive: false,
         });
         window.addEventListener('touchend', handleEnd);
-        window.addEventListener('resize', setup); // Re-run setup on resize
+        window.addEventListener('resize', setup);
         lastTime = performance.now();
         animationFrameId = requestAnimationFrame(animate);
       })
       .catch((error) => console.error('Could not load plane images:', error));
   });
-
   onUnmounted(() => {
     cancelAnimationFrame(animationFrameId);
     canvasRef.value?.removeEventListener('mousedown', handleStart);
